@@ -109,9 +109,36 @@ export function DatasetAnnotator() {
     }
   };
   // Remove uploaded media in Create Mode
-  const handleRemoveMedia = () => {
+  const handleRemoveMedia = async () => {
+    if (!media || !media.url) {
+      setMedia(null);
+      return;
+    }
+
+    const fileUrlToDelete = media.url;
+
+    // Gỡ hiển thị trước trên giao diện ngay lập tức cho mượt
     setMedia(null);
-    toast.info("Đã gỡ bỏ tệp phương tiện đính kèm.");
+    const toastId = toast.loading("Đang xóa tệp khỏi đám mây...");
+
+    try {
+      const res = await fetch(`/api/upload?url=${encodeURIComponent(fileUrlToDelete)}`, {
+        method: 'DELETE',
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        toast.dismiss(toastId);
+        toast.success("Đã gỡ và xóa tệp thành công khỏi đám mây.");
+      } else {
+        toast.dismiss(toastId);
+        toast.error(`Không thể xóa tệp trên cloud: ${result.error}`);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.dismiss(toastId);
+      toast.error("Lỗi kết nối khi xóa tệp.");
+    }
   };
 
   // Reset / Cancel form (đưa đánh giá về mặc định là null)
@@ -227,25 +254,47 @@ export function DatasetAnnotator() {
   };
 
   // Delete Data (Edit Mode) -> Gọi API DELETE `/api/dataset/[id]`
+  // Xóa Data (Edit Mode) -> Xóa cả file trên Vercel Blob (nếu có) và gọi API DELETE `/api/dataset/[id]`
   const handleDeleteData = async () => {
     if (!activeItemId) return;
     const toDeleteId = activeItemId;
 
+    // Lấy thông tin media của item đang chọn để xóa file cloud nếu tồn tại
+    const currentItem = items.find((item) => item.id === toDeleteId);
+    const mediaUrlToDelete = currentItem?.media?.url;
+
+    const toastId = toast.loading("Đang xóa bản ghi và tệp liên quan...");
+
     try {
+      // 1. Nếu có đính kèm media trên cloud, gọi API xóa file trước
+      if (mediaUrlToDelete) {
+        try {
+          await fetch(`/api/upload?url=${encodeURIComponent(mediaUrlToDelete)}`, {
+            method: 'DELETE',
+          });
+        } catch (mediaError) {
+          console.error("Không thể xóa file trên cloud, tiếp tục xóa bản ghi DB:", mediaError);
+        }
+      }
+
+      // 2. Gọi API xóa bản ghi trong MongoDB
       const res = await fetch(`/api/dataset/${toDeleteId}`, {
         method: 'DELETE',
       });
 
       const result = await res.json();
       if (result.success) {
-        setItems((prev) => prev.filter((item) => item._id !== toDeleteId));
-        toast.error(`Đã xóa mục #${toDeleteId} khỏi cơ sở dữ liệu.`);
+        setItems((prev) => prev.filter((item) => item.id !== toDeleteId));
+        toast.dismiss(toastId);
+        toast.error(`Đã xóa vĩnh viễn mục #${toDeleteId} và tệp đính kèm khỏi hệ thống.`);
         handleCancelEdit();
       } else {
+        toast.dismiss(toastId);
         toast.error(`Lỗi: ${result.error}`);
       }
     } catch (error) {
       console.error(error);
+      toast.dismiss(toastId);
       toast.error("Lỗi kết nối khi xóa bản ghi.");
     }
   };
