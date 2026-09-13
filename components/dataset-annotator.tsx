@@ -61,7 +61,7 @@ export function DatasetAnnotator() {
   }, []);
 
   // File upload handler
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -69,21 +69,45 @@ export function DatasetAnnotator() {
     const isVideo = file.type.startsWith("video/");
 
     if (!isImage && !isVideo) {
-      toast.error("Định dạng không được hỗ trợ. Vui lòng tải lên tệp hình ảnh hoặc video.");
+      toast.error("Định dạng không được hỗ trợ. Vui lòng tải lên hình ảnh hoặc video.");
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    setMedia({
-      type: isImage ? "image" : "video",
-      url: objectUrl,
-      name: file.name,
-      size: file.size,
-      description: mediaDescription,
-    });
-    toast.success(`Đã đính kèm ${isImage ? "hình ảnh" : "video"}: ${file.name}`);
-  };
+    const toastId = toast.loading("Đang tải tệp lên đám mây...");
 
+    try {
+      // 1. Gọi API upload file lên server/cloud
+      const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+        method: 'POST',
+        body: file, // Truyền trực tiếp file binary
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || "Tải lên thất bại");
+      }
+
+      // 2. Nhận lại URL thật từ cloud (ví dụ: https://xxxx.public.blob.vercel-storage.com/...)
+      const fileUrl = result.data.url;
+
+      // 3. Cập nhật state media với URL thật
+      setMedia({
+        type: isImage ? "image" : "video",
+        url: fileUrl, // URL lưu vào MongoDB
+        name: file.name,
+        size: file.size,
+        description: mediaDescription,
+      });
+
+      toast.dismiss(toastId);
+      toast.success(`Đã tải lên thành công ${isImage ? "hình ảnh" : "video"}!`);
+    } catch (error: any) {
+      console.error(error);
+      toast.dismiss(toastId);
+      toast.error(`Lỗi tải lên: ${error.message}`);
+    }
+  };
   // Remove uploaded media in Create Mode
   const handleRemoveMedia = () => {
     setMedia(null);
@@ -104,7 +128,7 @@ export function DatasetAnnotator() {
 
   // Select card from list -> shift to Edit Mode
   const handleSelectCard = (item: DatasetItem) => {
-    setActiveItemId(item.id);
+    setActiveItemId(item._id);
     setText(item.text);
     setMedia(item.media || null);
     setMediaDescription(item.mediaDescription || item.media?.description || "");
@@ -112,7 +136,7 @@ export function DatasetAnnotator() {
     setEval1Note(item.eval1.note);
     setEval2Label(item.eval2.label);
     setEval2Note(item.eval2.note);
-    toast.info(`Đang chỉnh sửa đánh giá cho #${item.id}. Nội dung văn bản & media gốc đã khóa.`);
+    toast.info(`Đang chỉnh sửa đánh giá cho #${item._id}. Nội dung văn bản & media gốc đã khóa.`);
   };
 
   // Create Data (Create Mode) -> Gọi API POST `/api/dataset`
@@ -125,7 +149,6 @@ export function DatasetAnnotator() {
     }
 
     const newPayload = {
-      customId: `item_mam_${Date.now().toString().slice(-6)}`,
       text: text.trim(),
       mediaDescription: mediaDescription.trim() || undefined,
       media: media
@@ -190,7 +213,7 @@ export function DatasetAnnotator() {
       const result = await res.json();
       if (result.success) {
         setItems((prev) =>
-            prev.map((item) => (item.id === activeItemId ? result.data : item))
+            prev.map((item) => (item._id === activeItemId ? result.data : item))
         );
         toast.success(`Đã lưu cập nhật đánh giá cho #${activeItemId}`);
         handleCancelEdit();
@@ -215,7 +238,7 @@ export function DatasetAnnotator() {
 
       const result = await res.json();
       if (result.success) {
-        setItems((prev) => prev.filter((item) => item.id !== toDeleteId));
+        setItems((prev) => prev.filter((item) => item._id !== toDeleteId));
         toast.error(`Đã xóa mục #${toDeleteId} khỏi cơ sở dữ liệu.`);
         handleCancelEdit();
       } else {
@@ -266,7 +289,7 @@ export function DatasetAnnotator() {
                 : "CONFLICT";
 
         return {
-          id: item.id,
+          id: item._id,
           text: item.text,
           media_description: item.mediaDescription || null,
           media: item.media
@@ -317,7 +340,7 @@ export function DatasetAnnotator() {
       const matchesSearch =
           !searchQuery.trim() ||
           item.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
           item.eval1.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
           item.eval2.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (item.mediaDescription && item.mediaDescription.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -355,7 +378,7 @@ export function DatasetAnnotator() {
   );
 
   return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      <div className="w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Top Banner / Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-border/80">
           <div>

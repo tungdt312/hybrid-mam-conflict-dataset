@@ -25,6 +25,7 @@ export function DatasetCard({ item, isSelected, onSelect }: DatasetCardProps) {
   return (
     <Card
       onClick={() => onSelect(item)}
+      key={item._id}
       className={`overflow-hidden border transition-all cursor-pointer group ${
         isSelected
           ? "ring-2 ring-primary border-primary bg-primary/[0.03] shadow-md"
@@ -35,7 +36,7 @@ export function DatasetCard({ item, isSelected, onSelect }: DatasetCardProps) {
       <div className="px-4 py-3 flex items-center justify-between border-b border-border/60 bg-muted/20 text-xs sm:text-sm">
         <div className="flex items-center gap-2.5">
           <span className="font-mono font-bold text-sm sm:text-base text-foreground">
-            #{item.id}
+            #{item._id}
           </span>
           <span className="text-muted-foreground text-xs sm:text-sm">
             {new Date(item.createdAt).toLocaleDateString("vi-VN", {

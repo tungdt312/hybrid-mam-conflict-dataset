@@ -14,7 +14,7 @@ export interface MediaData {
 }
 
 export interface DatasetItem {
-  id: string;
+  _id: string;
   text: string;
   mediaDescription?: string;
   media?: MediaData | null;

@@ -189,9 +189,9 @@ export function DataListPanel({
         ) : (
           filteredItems.map((item) => (
             <DatasetCard
-              key={item.id}
+              key={item._id}
               item={item}
-              isSelected={activeItemId === item.id}
+              isSelected={activeItemId === item._id}
               onSelect={onSelectCard}
             />
           ))

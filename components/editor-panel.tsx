@@ -325,29 +325,30 @@ export function EditorPanel({
             ) : null}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-border/80 bg-muted/20">
+          <div className="grid grid-cols-1 sm:grid-cols-2 divide-x-2 divide-dashed divide-gray-300 gap-4 p-4 rounded-xl border border-border/80 bg-muted/20">
             {/* Column 1: Evaluation 1 */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <span className="size-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">
+            <div className="space-y-3 p-2">
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <LabelBadge label={eval1Label} size="sm" />
+                  {eval1Label !== null && (
+                      <button
+                          type="button"
+                          onClick={() => setEval1Label(null)}
+                          title="Đặt lại về null (Chưa đánh giá)"
+                          className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted cursor-pointer"
+                      >
+                        <RotateCcw className="size-3" />
+                      </button>
+                  )}
+                </div>
+                <span className="text-sm font-bold text-foreground flex items-center gap-2 w-full">
+                  <span className="size-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
                     1
                   </span>
                   Đánh giá 1
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <LabelBadge label={eval1Label} size="sm" />
-                  {eval1Label !== null && (
-                    <button
-                      type="button"
-                      onClick={() => setEval1Label(null)}
-                      title="Đặt lại về null (Chưa đánh giá)"
-                      className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted cursor-pointer"
-                    >
-                      <RotateCcw className="size-3" />
-                    </button>
-                  )}
-                </div>
+
               </div>
 
               <div className="space-y-1.5">
@@ -391,27 +392,28 @@ export function EditorPanel({
             </div>
 
             {/* Column 2: Evaluation 2 */}
-            <div className="space-y-3 sm:border-l sm:border-border/60 sm:pl-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <span className="size-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">
+            <div className="space-y-3 p-2">
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <LabelBadge label={eval2Label} size="sm" />
+                  {eval2Label !== null && (
+                      <button
+                          type="button"
+                          onClick={() => setEval2Label(null)}
+                          title="Đặt lại về null (Chưa đánh giá)"
+                          className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted cursor-pointer"
+                      >
+                        <RotateCcw className="size-3" />
+                      </button>
+                  )}
+                </div>
+                <span className="text-sm font-bold text-foreground flex items-center gap-2 w-full">
+                  <span className="size-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
                     2
                   </span>
                   Đánh giá 2
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <LabelBadge label={eval2Label} size="sm" />
-                  {eval2Label !== null && (
-                    <button
-                      type="button"
-                      onClick={() => setEval2Label(null)}
-                      title="Đặt lại về null (Chưa đánh giá)"
-                      className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted cursor-pointer"
-                    >
-                      <RotateCcw className="size-3" />
-                    </button>
-                  )}
-                </div>
+
               </div>
 
               <div className="space-y-1.5">

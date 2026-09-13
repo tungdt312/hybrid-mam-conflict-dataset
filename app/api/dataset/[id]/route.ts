@@ -7,22 +7,17 @@ interface RouteParams {
     params: Promise<{ id: string }>;
 }
 
-// Hàm hỗ trợ tìm kiếm item theo _id (nếu hợp lệ ObjectId) hoặc customId
-async function findItemById(id: string) {
-    let query: any = { customId: id };
-    if (mongoose.Types.ObjectId.isValid(id)) {
-        query = { $or: [{ _id: id }, { customId: id }] };
-    }
-    return await DatasetItem.findOne(query);
-}
-
-// GET: Lấy chi tiết một item
+// GET: Lấy chi tiết một item theo _id
 export async function GET(request: Request, { params }: RouteParams) {
     try {
         await dbConnect();
         const { id } = await params;
 
-        const item = await findItemById(id);
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ success: false, error: 'ID không hợp lệ' }, { status: 400 });
+        }
+
+        const item = await DatasetItem.findById(id);
         if (!item) {
             return NextResponse.json({ success: false, error: 'Không tìm thấy bản ghi' }, { status: 404 });
         }
@@ -33,22 +28,21 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 }
 
-// PUT / PATCH: Cập nhật thông tin item (Text, Media hoặc kết quả đánh giá eval1, eval2)
+// PUT / PATCH: Cập nhật thông tin item theo _id
 export async function PUT(request: Request, { params }: RouteParams) {
     try {
         await dbConnect();
         const { id } = await params;
         const body = await request.json();
 
-        let query: any = { customId: id };
-        if (mongoose.Types.ObjectId.isValid(id)) {
-            query = { $or: [{ _id: id }, { customId: id }] };
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ success: false, error: 'ID không hợp lệ' }, { status: 400 });
         }
 
-        const updatedItem = await DatasetItem.findOneAndUpdate(
-            query,
+        const updatedItem = await DatasetItem.findByIdAndUpdate(
+            id,
             { $set: body },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         );
 
         if (!updatedItem) {
@@ -61,18 +55,17 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 }
 
-// DELETE: Xóa bản ghi
+// DELETE: Xóa bản ghi theo _id
 export async function DELETE(request: Request, { params }: RouteParams) {
     try {
         await dbConnect();
         const { id } = await params;
 
-        let query: any = { customId: id };
-        if (mongoose.Types.ObjectId.isValid(id)) {
-            query = { $or: [{ _id: id }, { customId: id }] };
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ success: false, error: 'ID không hợp lệ' }, { status: 400 });
         }
 
-        const deletedItem = await DatasetItem.findOneAndDelete(query);
+        const deletedItem = await DatasetItem.findByIdAndDelete(id);
 
         if (!deletedItem) {
             return NextResponse.json({ success: false, error: 'Không tìm thấy bản ghi để xóa' }, { status: 404 });
