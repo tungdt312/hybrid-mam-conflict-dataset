@@ -260,7 +260,7 @@ export function DatasetAnnotator() {
     const toDeleteId = activeItemId;
 
     // Lấy thông tin media của item đang chọn để xóa file cloud nếu tồn tại
-    const currentItem = items.find((item) => item.id === toDeleteId);
+    const currentItem = items.find((item) => item._id === toDeleteId);
     const mediaUrlToDelete = currentItem?.media?.url;
 
     const toastId = toast.loading("Đang xóa bản ghi và tệp liên quan...");
@@ -284,7 +284,7 @@ export function DatasetAnnotator() {
 
       const result = await res.json();
       if (result.success) {
-        setItems((prev) => prev.filter((item) => item.id !== toDeleteId));
+        setItems((prev) => prev.filter((item) => item._id !== toDeleteId));
         toast.dismiss(toastId);
         toast.error(`Đã xóa vĩnh viễn mục #${toDeleteId} và tệp đính kèm khỏi hệ thống.`);
         handleCancelEdit();
