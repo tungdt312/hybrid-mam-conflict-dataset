@@ -325,7 +325,7 @@ export function EditorPanel({
             ) : null}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 divide-x-2 divide-dashed divide-gray-300 gap-4 p-4 rounded-xl border border-border/80 bg-muted/20">
+          <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x-2 md:divide-dashed md:divide-gray-300 gap-4 p-4 rounded-xl border border-border/80 bg-muted/20">
             {/* Column 1: Evaluation 1 */}
             <div className="space-y-3 p-2">
               <div className="flex flex-col items-center gap-2">
