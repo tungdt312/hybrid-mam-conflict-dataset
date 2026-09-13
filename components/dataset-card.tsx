@@ -33,7 +33,7 @@ export function DatasetCard({ item, isSelected, onSelect }: DatasetCardProps) {
       }`}
     >
       {/* Card Header: Metadata & Status */}
-      <div className="px-4 py-3 flex items-center justify-between border-b border-border/60 bg-muted/20 text-xs sm:text-sm">
+      <div className="px-4 py-3 flex flex-col lg:flex-row items-center justify-between border-b border-border/60 bg-muted/20 text-xs sm:text-sm">
         <div className="flex items-center gap-2.5">
           <span className="font-mono font-bold text-sm sm:text-base text-foreground">
             #{item._id}
