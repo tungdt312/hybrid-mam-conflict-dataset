@@ -2,11 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import SampleData from '@/models/datasetModel';
 
-interface RouteParams {
-    params: {
-        id: string;
-    };
-}
+interface RouteParams { params: Promise<{ id: string }> }
 
 export async function GET(request: Request, { params }: RouteParams) {
     try {
