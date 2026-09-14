@@ -1,25 +1,21 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import DatasetItem from '@/models/dataset';
-import mongoose from 'mongoose';
+import SampleData from '@/models/datasetModel';
 
 interface RouteParams {
-    params: Promise<{ id: string }>;
+    params: {
+        id: string;
+    };
 }
 
-// GET: Lấy chi tiết một item theo _id
 export async function GET(request: Request, { params }: RouteParams) {
     try {
         await dbConnect();
-        const { id } = await params;
+        const { id } = params;
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return NextResponse.json({ success: false, error: 'ID không hợp lệ' }, { status: 400 });
-        }
-
-        const item = await DatasetItem.findById(id);
+        const item = await SampleData.findById(id).lean();
         if (!item) {
-            return NextResponse.json({ success: false, error: 'Không tìm thấy bản ghi' }, { status: 404 });
+            return NextResponse.json({ success: false, error: 'Không tìm thấy mục dữ liệu' }, { status: 404 });
         }
 
         return NextResponse.json({ success: true, data: item }, { status: 200 });
@@ -28,25 +24,19 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 }
 
-// PUT / PATCH: Cập nhật thông tin item theo _id
 export async function PUT(request: Request, { params }: RouteParams) {
     try {
         await dbConnect();
-        const { id } = await params;
+        const { id } = params;
         const body = await request.json();
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return NextResponse.json({ success: false, error: 'ID không hợp lệ' }, { status: 400 });
-        }
-
-        const updatedItem = await DatasetItem.findByIdAndUpdate(
-            id,
-            { $set: body },
-            { returnDocument: 'after', runValidators: true }
-        );
+        const updatedItem = await SampleData.findByIdAndUpdate(id, body, {
+            new: true,
+            runValidators: true,
+        }).lean();
 
         if (!updatedItem) {
-            return NextResponse.json({ success: false, error: 'Không tìm thấy bản ghi để cập nhật' }, { status: 404 });
+            return NextResponse.json({ success: false, error: 'Không tìm thấy mục dữ liệu để cập nhật' }, { status: 404 });
         }
 
         return NextResponse.json({ success: true, data: updatedItem }, { status: 200 });
@@ -55,23 +45,17 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 }
 
-// DELETE: Xóa bản ghi theo _id
 export async function DELETE(request: Request, { params }: RouteParams) {
     try {
         await dbConnect();
-        const { id } = await params;
+        const { id } = params;
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return NextResponse.json({ success: false, error: 'ID không hợp lệ' }, { status: 400 });
-        }
-
-        const deletedItem = await DatasetItem.findByIdAndDelete(id);
-
+        const deletedItem = await SampleData.findByIdAndDelete(id).lean();
         if (!deletedItem) {
-            return NextResponse.json({ success: false, error: 'Không tìm thấy bản ghi để xóa' }, { status: 404 });
+            return NextResponse.json({ success: false, error: 'Không tìm thấy mục dữ liệu để xóa' }, { status: 404 });
         }
 
-        return NextResponse.json({ success: true, message: 'Xóa thành công bản ghi' }, { status: 200 });
+        return NextResponse.json({ success: true, message: 'Đã xóa thành công' }, { status: 200 });
     } catch (error: any) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }

@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { DatasetItem, LabelType, MediaData } from "@/types/dataset";
-import { EditorPanel } from "@/components/editor-panel";
+import { SampleData, LabelType, MediaData } from "@/types/dataset";
+import { EditorPanel, EvidenceSource } from "@/components/editor-panel";
 import { DataListPanel, FilterCategory } from "@/components/data-list-panel";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ import {
 
 export function DatasetAnnotator() {
   // Dataset collection state
-  const [items, setItems] = useState<DatasetItem[]>([]);
+  const [items, setItems] = useState<SampleData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
 
@@ -26,10 +26,28 @@ export function DatasetAnnotator() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<FilterCategory>("ALL");
 
-  // Form states (Left Column) - Mặc định là null
+  // Form states (Left Column) tương thích chuẩn SampleData mới
   const [text, setText] = useState("");
   const [media, setMedia] = useState<MediaData | null>(null);
   const [mediaDescription, setMediaDescription] = useState("");
+
+  // Các trường bổ sung theo chuẩn Schema mới
+  const [modalityType, setModalityType] = useState<"TEXT" | "IMAGE" | "AUDIO" | "VIDEO" | "MIX">("TEXT");
+  const [language, setLanguage] = useState<"vi" | "en">("vi");
+
+  // Gold Annotation states
+  const [goldDecision, setGoldDecision] = useState<"PASS" | "REVIEW" | "BLOCK">("REVIEW");
+  const [goldLabel, setGoldLabel] = useState<LabelType | null>(null);
+  const [goldExplanation, setGoldExplanation] = useState("");
+  const [evidenceSources, setEvidenceSources] = useState<EvidenceSource[]>([]);
+
+  // Agent extracted contexts for media
+  const [ocrText, setOcrText] = useState("");
+  const [imageCaption, setImageCaption] = useState("");
+  const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [videoCaption, setVideoCaption] = useState("");
+
+  // Dual annotations (eval1 & eval2 với LabelType | null)[cite: 12]
   const [eval1Label, setEval1Label] = useState<LabelType | null>(null);
   const [eval1Note, setEval1Note] = useState("");
   const [eval2Label, setEval2Label] = useState<LabelType | null>(null);
@@ -37,7 +55,7 @@ export function DatasetAnnotator() {
 
   const isEditMode = activeItemId !== null;
 
-  // Lấy danh sách dataset từ MongoDB khi component được mount
+  // Lấy danh sách dataset từ API/MongoDB khi component được mount
   const fetchDataset = async () => {
     try {
       setIsLoading(true);
@@ -60,6 +78,23 @@ export function DatasetAnnotator() {
     fetchDataset();
   }, []);
 
+  // Evidence Sources handlers
+  const handleAddEvidence = () => {
+    setEvidenceSources((prev) => [...prev, { type: "", value: "" }]);
+  };
+
+  const handleUpdateEvidence = (index: number, field: "type" | "value", val: string) => {
+    setEvidenceSources((prev) => {
+      const updated = [...prev];
+      updated[index][field] = val;
+      return updated;
+    });
+  };
+
+  const handleRemoveEvidence = (index: number) => {
+    setEvidenceSources((prev) => prev.filter((_, i) => i !== index));
+  };
+
   // File upload handler
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -76,10 +111,9 @@ export function DatasetAnnotator() {
     const toastId = toast.loading("Đang tải tệp lên đám mây...");
 
     try {
-      // 1. Gọi API upload file lên server/cloud
       const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
         method: 'POST',
-        body: file, // Truyền trực tiếp file binary
+        body: file,
       });
 
       const result = await response.json();
@@ -88,17 +122,19 @@ export function DatasetAnnotator() {
         throw new Error(result.error || "Tải lên thất bại");
       }
 
-      // 2. Nhận lại URL thật từ cloud (ví dụ: https://xxxx.public.blob.vercel-storage.com/...)
       const fileUrl = result.data.url;
 
-      // 3. Cập nhật state media với URL thật
       setMedia({
         type: isImage ? "image" : "video",
-        url: fileUrl, // URL lưu vào MongoDB
+        url: fileUrl,
         name: file.name,
         size: file.size,
         description: mediaDescription,
       });
+
+      if (modalityType === "TEXT") {
+        setModalityType(isImage ? "IMAGE" : "VIDEO");
+      }
 
       toast.dismiss(toastId);
       toast.success(`Đã tải lên thành công ${isImage ? "hình ảnh" : "video"}!`);
@@ -108,17 +144,18 @@ export function DatasetAnnotator() {
       toast.error(`Lỗi tải lên: ${error.message}`);
     }
   };
-  // Remove uploaded media in Create Mode
+
+  // Remove uploaded media
   const handleRemoveMedia = async () => {
     if (!media || !media.url) {
       setMedia(null);
+      setModalityType("TEXT");
       return;
     }
 
     const fileUrlToDelete = media.url;
-
-    // Gỡ hiển thị trước trên giao diện ngay lập tức cho mượt
     setMedia(null);
+    setModalityType("TEXT");
     const toastId = toast.loading("Đang xóa tệp khỏi đám mây...");
 
     try {
@@ -141,12 +178,22 @@ export function DatasetAnnotator() {
     }
   };
 
-  // Reset / Cancel form (đưa đánh giá về mặc định là null)
+  // Reset / Cancel form
   const handleCancelEdit = () => {
     setActiveItemId(null);
     setText("");
     setMedia(null);
     setMediaDescription("");
+    setModalityType("TEXT");
+    setLanguage("vi");
+    setGoldDecision("REVIEW");
+    setGoldLabel(null);
+    setGoldExplanation("");
+    setEvidenceSources([]);
+    setOcrText("");
+    setImageCaption("");
+    setVideoDuration(0);
+    setVideoCaption("");
     setEval1Label(null);
     setEval1Note("");
     setEval2Label(null);
@@ -154,19 +201,58 @@ export function DatasetAnnotator() {
   };
 
   // Select card from list -> shift to Edit Mode
-  const handleSelectCard = (item: DatasetItem) => {
+  const handleSelectCard = (item: SampleData) => {
     setActiveItemId(item._id);
-    setText(item.text);
-    setMedia(item.media || null);
-    setMediaDescription(item.mediaDescription || item.media?.description || "");
+    setText(item.raw_inputs.text || "");
+
+    if (item.raw_inputs.image_path) {
+      setMedia({
+        type: "image",
+        url: item.raw_inputs.image_path,
+        name: item.raw_inputs.image_path.split("/").pop() || "image",
+        description: item.agent_extracted_context?.vision_context?.image_caption || "",
+      });
+    } else if (item.raw_inputs.video_path) {
+      setMedia({
+        type: "video",
+        url: item.raw_inputs.video_path,
+        name: item.raw_inputs.video_path.split("/").pop() || "video",
+        description: item.agent_extracted_context?.video_context?.video_caption || "",
+      });
+    } else {
+      setMedia(null);
+    }
+
+    setMediaDescription(
+        item.agent_extracted_context?.vision_context?.image_caption ||
+        item.agent_extracted_context?.video_context?.video_caption || ""
+    );
+
+    setModalityType(item.modality_type);
+    setLanguage(item.metadata?.language || "vi");
+
+    // Khôi phục Gold Annotation
+    setGoldDecision(item.gold_annotation?.decision || "REVIEW");
+    setGoldLabel(item.gold_annotation?.label !== undefined ? item.gold_annotation.label : null);
+    setGoldExplanation(item.gold_annotation?.explanation_vi || "");
+    setEvidenceSources(item.gold_annotation?.evidence_sources || []);
+
+    // Khôi phục Context media
+    setOcrText(item.agent_extracted_context?.vision_context?.ocr_text || "");
+    setImageCaption(item.agent_extracted_context?.vision_context?.image_caption || "");
+    setVideoDuration(item.agent_extracted_context?.video_context?.duration_seconds || 0);
+    setVideoCaption(item.agent_extracted_context?.video_context?.video_caption || "");
+
+    // Khôi phục Dual evaluations
     setEval1Label(item.eval1.label);
     setEval1Note(item.eval1.note);
     setEval2Label(item.eval2.label);
     setEval2Note(item.eval2.note);
-    toast.info(`Đang chỉnh sửa đánh giá cho #${item._id}. Nội dung văn bản & media gốc đã khóa.`);
+
+    toast.info(`Đang chỉnh sửa đánh giá cho mục #${item._id}.`);
   };
 
-  // Create Data (Create Mode) -> Gọi API POST `/api/dataset`
+  // Create Data (Create Mode)
   const handleCreateData = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -175,15 +261,36 @@ export function DatasetAnnotator() {
       return;
     }
 
-    const newPayload = {
-      text: text.trim(),
-      mediaDescription: mediaDescription.trim() || undefined,
-      media: media
-          ? {
-            ...media,
-            description: mediaDescription.trim() || undefined,
-          }
-          : null,
+    const newPayload: Partial<SampleData> = {
+      modality_type: modalityType,
+      metadata: {
+        language: language,
+      },
+      raw_inputs: {
+        text: text.trim() || null,
+        image_path: media?.type === "image" ? media.url : null,
+        audio_path: null,
+        video_path: media?.type === "video" ? media.url : null,
+      },
+      agent_extracted_context: {
+        vision_context: media?.type === "image" ? {
+          ocr_text: ocrText.trim(),
+          image_caption: imageCaption.trim() || mediaDescription.trim(),
+          detected_objects: [],
+        } : null,
+        audio_context: null,
+        video_context: media?.type === "video" ? {
+          duration_seconds: videoDuration,
+          video_caption: videoCaption.trim() || mediaDescription.trim(),
+        } : null,
+      },
+      gold_annotation: {
+        decision: goldDecision,
+        label: goldLabel || null,
+        evidence_sources: evidenceSources,
+        reasoning_log: [],
+        explanation_vi: goldExplanation.trim() || "Chưa có giải thích chi tiết.",
+      },
       eval1: {
         label: eval1Label,
         note: eval1Note.trim(),
@@ -193,6 +300,9 @@ export function DatasetAnnotator() {
         note: eval2Note.trim(),
       },
     };
+
+    // Lưu lại URL tệp hiện tại để phòng trường hợp cần rollback (xóa tệp)
+    const uploadedFileUrl = media?.url;
 
     try {
       const res = await fetch('/api/dataset', {
@@ -204,22 +314,63 @@ export function DatasetAnnotator() {
       const result = await res.json();
       if (result.success) {
         setItems((prev) => [result.data, ...prev]);
-        toast.success(`Đã tạo thành công mục dữ liệu mới #${result.data.id}`);
+        toast.success(`Đã tạo thành công mục dữ liệu mới #${result.data._id}`);
         handleCancelEdit();
       } else {
+        // Nếu API trả về thất bại, tiến hành xóa tệp đã tải lên trước đó (nếu có)
+        if (uploadedFileUrl) {
+          try {
+            await fetch(`/api/upload?url=${encodeURIComponent(uploadedFileUrl)}`, {
+              method: 'DELETE',
+            });
+          } catch (cleanupErr) {
+            console.error("Lỗi khi dọn dẹp tệp mồ côi:", cleanupErr);
+          }
+        }
         toast.error(`Lỗi: ${result.error}`);
       }
     } catch (error) {
       console.error(error);
+
+      // Nếu xảy ra lỗi mạng hoặc ngoại lệ trong quá trình gọi API, xóa tệp đã tải lên
+      if (uploadedFileUrl) {
+        try {
+          await fetch(`/api/upload?url=${encodeURIComponent(uploadedFileUrl)}`, {
+            method: 'DELETE',
+          });
+        } catch (cleanupErr) {
+          console.error("Lỗi khi dọn dẹp tệp mồ côi:", cleanupErr);
+        }
+      }
+
       toast.error("Không thể kết nối tới server khi tạo dữ liệu.");
     }
   };
 
-  // Save Changes (Edit Mode) -> Gọi API PUT `/api/dataset/[id]`
+  // Save Changes (Edit Mode)
   const handleSaveChanges = async () => {
     if (!activeItemId) return;
 
     const updatePayload = {
+      modality_type: modalityType,
+      metadata: { language },
+      gold_annotation: {
+        decision: goldDecision,
+        label: goldLabel,
+        evidence_sources: evidenceSources,
+        explanation_vi: goldExplanation.trim(),
+      },
+      agent_extracted_context: {
+        vision_context: media?.type === "image" ? {
+          ocr_text: ocrText.trim(),
+          image_caption: imageCaption.trim(),
+          detected_objects: [],
+        } : null,
+        video_context: media?.type === "video" ? {
+          duration_seconds: videoDuration,
+          video_caption: videoCaption.trim(),
+        } : null,
+      },
       eval1: {
         label: eval1Label,
         note: eval1Note.trim(),
@@ -242,7 +393,7 @@ export function DatasetAnnotator() {
         setItems((prev) =>
             prev.map((item) => (item._id === activeItemId ? result.data : item))
         );
-        toast.success(`Đã lưu cập nhật đánh giá cho #${activeItemId}`);
+        toast.success(`Đã lưu cập nhật cho #${activeItemId}`);
         handleCancelEdit();
       } else {
         toast.error(`Lỗi: ${result.error}`);
@@ -253,31 +404,27 @@ export function DatasetAnnotator() {
     }
   };
 
-  // Delete Data (Edit Mode) -> Gọi API DELETE `/api/dataset/[id]`
-  // Xóa Data (Edit Mode) -> Xóa cả file trên Vercel Blob (nếu có) và gọi API DELETE `/api/dataset/[id]`
+  // Delete Data (Edit Mode)
   const handleDeleteData = async () => {
     if (!activeItemId) return;
     const toDeleteId = activeItemId;
 
-    // Lấy thông tin media của item đang chọn để xóa file cloud nếu tồn tại
     const currentItem = items.find((item) => item._id === toDeleteId);
-    const mediaUrlToDelete = currentItem?.media?.url;
+    const mediaUrlToDelete = currentItem?.raw_inputs?.image_path || currentItem?.raw_inputs?.video_path;
 
     const toastId = toast.loading("Đang xóa bản ghi và tệp liên quan...");
 
     try {
-      // 1. Nếu có đính kèm media trên cloud, gọi API xóa file trước
       if (mediaUrlToDelete) {
         try {
           await fetch(`/api/upload?url=${encodeURIComponent(mediaUrlToDelete)}`, {
             method: 'DELETE',
           });
         } catch (mediaError) {
-          console.error("Không thể xóa file trên cloud, tiếp tục xóa bản ghi DB:", mediaError);
+          console.error("Không thể xóa file trên cloud:", mediaError);
         }
       }
 
-      // 2. Gọi API xóa bản ghi trong MongoDB
       const res = await fetch(`/api/dataset/${toDeleteId}`, {
         method: 'DELETE',
       });
@@ -286,7 +433,7 @@ export function DatasetAnnotator() {
       if (result.success) {
         setItems((prev) => prev.filter((item) => item._id !== toDeleteId));
         toast.dismiss(toastId);
-        toast.error(`Đã xóa vĩnh viễn mục #${toDeleteId} và tệp đính kèm khỏi hệ thống.`);
+        toast.error(`Đã xóa vĩnh viễn mục #${toDeleteId}.`);
         handleCancelEdit();
       } else {
         toast.dismiss(toastId);
@@ -299,14 +446,14 @@ export function DatasetAnnotator() {
     }
   };
 
-  // Seeding nhanh dữ liệu mẫu nếu DB trống
+  // Seeding nhanh dữ liệu mẫu
   const handleSeedData = async () => {
     try {
       const res = await fetch('/api/dataset/seed', { method: 'POST' });
       const result = await res.json();
       if (result.success) {
         toast.success(result.message);
-        fetchDataset(); // Tải lại danh sách sau khi seed
+        fetchDataset();
       } else {
         toast.error(`Lỗi seed: ${result.error}`);
       }
@@ -316,7 +463,7 @@ export function DatasetAnnotator() {
     }
   };
 
-  // Export structured JSON
+  // Export structured JSON theo chuẩn SampleData interface
   const handleExportJSON = () => {
     const exportData = {
       dataset_name: "hybrid_mam_conflict_dataset",
@@ -329,42 +476,7 @@ export function DatasetAnnotator() {
           (i) => i.eval1.label !== null && i.eval2.label !== null && i.eval1.label === i.eval2.label
       ).length,
       pending_count: items.filter((i) => i.eval1.label === null || i.eval2.label === null).length,
-      items: items.map((item) => {
-        const isPending = item.eval1.label === null || item.eval2.label === null;
-        const status = isPending
-            ? "PENDING"
-            : item.eval1.label === item.eval2.label
-                ? "CONSENSUS"
-                : "CONFLICT";
-
-        return {
-          id: item._id,
-          text: item.text,
-          media_description: item.mediaDescription || null,
-          media: item.media
-              ? {
-                type: item.media.type,
-                name: item.media.name,
-                url: item.media.url,
-                size_bytes: item.media.size || null,
-                description: item.media.description || item.mediaDescription || null,
-              }
-              : null,
-          evaluation_1: {
-            annotator: "Người đánh giá 1",
-            label: item.eval1.label,
-            note: item.eval1.note,
-          },
-          evaluation_2: {
-            annotator: "Người đánh giá 2",
-            label: item.eval2.label,
-            note: item.eval2.note,
-          },
-          status,
-          created_at: item.createdAt,
-          updated_at: item.updatedAt || item.createdAt,
-        };
-      }),
+      items: items,
     };
 
     const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
@@ -380,19 +492,24 @@ export function DatasetAnnotator() {
     downloadAnchor.click();
     downloadAnchor.remove();
 
-    toast.success(`Đã xuất thành công ${items.length} mục dữ liệu ra tệp JSON.`);
+    toast.success(`Đã xuất thành công ${items.length} mục dữ liệu ra tệp JSON chuẩn.`);
   };
 
   // Filtered dataset items
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      const textContent = item.raw_inputs.text || "";
+      const visionCap = item.agent_extracted_context?.vision_context?.image_caption || "";
+      const videoCap = item.agent_extracted_context?.video_context?.video_caption || "";
+
       const matchesSearch =
           !searchQuery.trim() ||
-          item.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          textContent.toLowerCase().includes(searchQuery.toLowerCase()) ||
           item._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
           item.eval1.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
           item.eval2.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (item.mediaDescription && item.mediaDescription.toLowerCase().includes(searchQuery.toLowerCase()));
+          visionCap.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          videoCap.toLowerCase().includes(searchQuery.toLowerCase());
 
       if (!matchesSearch) return false;
 
@@ -451,7 +568,7 @@ export function DatasetAnnotator() {
             {items.length === 0 && !isLoading && (
                 <button
                     onClick={handleSeedData}
-                    className="px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5 shadow-xs"
+                    className="px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <RefreshCw className="size-3.5" /> Nạp dữ liệu mẫu
                 </button>
@@ -500,11 +617,33 @@ export function DatasetAnnotator() {
               <EditorPanel
                   isEditMode={isEditMode}
                   activeItemId={activeItemId}
+                  modalityType={modalityType}
+                  setModalityType={setModalityType}
+                  language={language}
+                  setLanguage={setLanguage}
+                  goldDecision={goldDecision}
+                  setGoldDecision={setGoldDecision}
+                  goldLabel={goldLabel}
+                  setGoldLabel={setGoldLabel}
+                  goldExplanation={goldExplanation}
+                  setGoldExplanation={setGoldExplanation}
+                  evidenceSources={evidenceSources}
+                  onAddEvidence={handleAddEvidence}
+                  onUpdateEvidence={handleUpdateEvidence}
+                  onRemoveEvidence={handleRemoveEvidence}
                   text={text}
                   setText={setText}
                   media={media}
                   mediaDescription={mediaDescription}
                   setMediaDescription={setMediaDescription}
+                  ocrText={ocrText}
+                  setOcrText={setOcrText}
+                  imageCaption={imageCaption}
+                  setImageCaption={setImageCaption}
+                  videoDuration={videoDuration}
+                  setVideoDuration={setVideoDuration}
+                  videoCaption={videoCaption}
+                  setVideoCaption={setVideoCaption}
                   eval1Label={eval1Label}
                   setEval1Label={setEval1Label}
                   eval1Note={eval1Note}

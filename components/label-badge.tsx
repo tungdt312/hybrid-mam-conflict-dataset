@@ -1,9 +1,9 @@
 import React from "react";
-import { LabelType } from "@/types/dataset";
+import { getLabelText } from "@/lib/utils";
 import { ShieldCheck, AlertTriangle, ShieldAlert, HelpCircle } from "lucide-react";
 
 interface LabelBadgeProps {
-  label: LabelType | null | undefined;
+  label: number | null | undefined;
   size?: "sm" | "md" | "lg";
 }
 
@@ -20,52 +20,43 @@ export function LabelBadge({ label, size = "md" }: LabelBadgeProps) {
     lg: "size-4",
   }[size];
 
-  if (!label) {
+  const text = getLabelText(label);
+
+  if (label === null || label === undefined) {
     return (
-      <span
-        className={`inline-flex items-center rounded-full font-semibold tracking-wide bg-muted/80 text-muted-foreground border border-border/80 ${sizeClasses}`}
-        title="Đánh giá mặc định chưa được chọn (null)"
-      >
+        <span className={`inline-flex items-center rounded-full font-semibold tracking-wide bg-muted/80 text-muted-foreground border border-border/80 ${sizeClasses}`}>
         <HelpCircle className={`${iconSizes} shrink-0 text-muted-foreground/80`} />
-        CHƯA ĐÁNH GIÁ
+          {text}
       </span>
     );
   }
 
   switch (label) {
-    case "SAFE":
+    case 0: // SAFE
       return (
-        <span
-          className={`inline-flex items-center rounded-full font-bold tracking-wide bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 ${sizeClasses}`}
-        >
+          <span className={`inline-flex items-center rounded-full font-bold tracking-wide bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 ${sizeClasses}`}>
           <ShieldCheck className={`${iconSizes} shrink-0`} />
-          SAFE
+            {text}
         </span>
       );
-    case "OFFENSIVE":
+    case 1: // OFFENSIVE
       return (
-        <span
-          className={`inline-flex items-center rounded-full font-bold tracking-wide bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 ${sizeClasses}`}
-        >
+          <span className={`inline-flex items-center rounded-full font-bold tracking-wide bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 ${sizeClasses}`}>
           <AlertTriangle className={`${iconSizes} shrink-0`} />
-          OFFENSIVE
+            {text}
         </span>
       );
-    case "HATE":
+    case 2: // HATE
       return (
-        <span
-          className={`inline-flex items-center rounded-full font-bold tracking-wide bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30 ${sizeClasses}`}
-        >
+          <span className={`inline-flex items-center rounded-full font-bold tracking-wide bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30 ${sizeClasses}`}>
           <ShieldAlert className={`${iconSizes} shrink-0`} />
-          HATE
+            {text}
         </span>
       );
     default:
       return (
-        <span
-          className={`inline-flex items-center rounded-full font-bold bg-muted text-foreground border border-border ${sizeClasses}`}
-        >
-          {label}
+          <span className={`inline-flex items-center rounded-full font-bold bg-muted text-foreground border border-border ${sizeClasses}`}>
+          {text}
         </span>
       );
   }

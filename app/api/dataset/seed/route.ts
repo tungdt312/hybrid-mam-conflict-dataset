@@ -1,22 +1,55 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import DatasetItem from '@/models/dataset';
+import SampleData from '@/models/datasetModel';
 
 const INITIAL_SEED_DATA = [
     {
-        text: "Hôm nay thời tiết đẹp quá, mọi người cùng đi dạo nhé!",
-        eval1: { label: "SAFE", note: "Nội dung thân thiện, bình thường" },
-        eval2: { label: "SAFE", note: "Không có vấn đề gì" }
+        modality_type: "TEXT",
+        metadata: { language: "vi" },
+        raw_inputs: {
+            text: "Hôm nay thời tiết đẹp quá, mọi người cùng đi dạo nhé!",
+            image_path: null,
+            audio_path: null,
+            video_path: null
+        },
+        agent_extracted_context: {
+            vision_context: null,
+            audio_context: null,
+            video_context: null
+        },
+        gold_annotation: {
+            decision: "PASS",
+            label: 0,
+            evidence_sources: [{ type: "text_content", value: "Thời tiết đẹp" }],
+            reasoning_log: [
+                { time_stamp: "2026-06-06T10:00:00Z", node: "classifier", input: "Hôm nay thời tiết đẹp...", output: "PASS", action: "evaluate" }
+            ],
+            explanation_vi: "Nội dung hoàn toàn bình thường, thân thiện."
+        }
     },
     {
-        text: "Dịch vụ của cửa hàng này làm ăn quá tệ, không bao giờ quay lại nữa!",
-        eval1: { label: "OFFENSIVE", note: "Ngôn từ bức xúc, mang tính công kích dịch vụ" },
-        eval2: { label: "SAFE", note: "Chỉ là phàn nàn cá nhân, chưa đến mức toxic" }
-    },
-    {
-        text: "Đồ lũ ngu ngốc, biến khỏi đây ngay lập tức!",
-        eval1: { label: "HATE", note: "Xúc phạm trực tiếp, ngôn từ thù ghét" },
-        eval2: { label: "HATE", note: "Vi phạm nguyên tắc cộng đồng rõ ràng" }
+        modality_type: "TEXT",
+        metadata: { language: "vi" },
+        raw_inputs: {
+            text: "Đồ lũ ngu ngốc, biến khỏi đây ngay lập tức!",
+            image_path: null,
+            audio_path: null,
+            video_path: null
+        },
+        agent_extracted_context: {
+            vision_context: null,
+            audio_context: null,
+            video_context: null
+        },
+        gold_annotation: {
+            decision: "BLOCK",
+            label: 2,
+            evidence_sources: [{ type: "text_content", value: "Đồ lũ ngu ngốc" }],
+            reasoning_log: [
+                { time_stamp: "2026-06-06T10:05:00Z", node: "classifier", input: "Đồ lũ ngu ngốc...", output: "BLOCK", action: "evaluate" }
+            ],
+            explanation_vi: "Chứa từ ngữ xúc phạm trực tiếp."
+        }
     }
 ];
 
@@ -24,14 +57,14 @@ export async function POST() {
     try {
         await dbConnect();
 
-        // Kiểm tra xem đã có dữ liệu chưa, nếu muốn ghi đè hoặc thêm mới
-        for (const item of INITIAL_SEED_DATA) {
-            await DatasetItem.create(item);
-        }
+        // Xóa cũ (nếu muốn reset mỗi khi seed) hoặc dùng insertMany trực tiếp
+        await SampleData.deleteMany({});
+        const insertedItems = await SampleData.insertMany(INITIAL_SEED_DATA);
 
         return NextResponse.json({
             success: true,
-            message: 'Đã nạp dữ liệu mẫu thành công vào MongoDB!'
+            message: `Đã nạp thành công ${insertedItems.length} bản ghi mẫu sử dụng _id mặc định!`,
+            data: insertedItems
         }, { status: 200 });
     } catch (error: any) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });

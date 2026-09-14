@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import DatasetItem from '@/models/dataset';
+import SampleData from '@/models/datasetModel';
 
-// GET: Lấy danh sách dataset (Hỗ trợ tìm kiếm q và filter nhãn)
 export async function GET(request: Request) {
     try {
         await dbConnect();
@@ -13,20 +12,23 @@ export async function GET(request: Request) {
 
         let query: Record<string, any> = {};
 
-        // Xử lý tìm kiếm theo từ khóa (text hoặc mediaDescription)
+        // Tìm kiếm theo text hoặc ghi chú
         if (q) {
             query.$or = [
-                { text: { $regex: q, $options: 'i' } },
-                { mediaDescription: { $regex: q, $options: 'i' } }
+                { 'raw_inputs.text': { $regex: q, $options: 'i' } },
+                { 'gold_annotation.explanation_vi': { $regex: q, $options: 'i' } },
+                { 'eval1.note': { $regex: q, $options: 'i' } },
+                { 'eval2.note': { $regex: q, $options: 'i' } }
             ];
         }
 
-        // Xử lý lọc nâng cao theo trạng thái / nhãn (eval1 hoặc eval2)
+        // Bộ lọc theo trạng thái đánh giá (dựa trên label số: 0, 1, 2)
         if (filter !== 'ALL') {
-            if (filter === 'SAFE' || filter === 'OFFENSIVE' || filter === 'HATE') {
+            if (filter === '0' || filter === '1' || filter === '2') {
+                const labelNum = parseInt(filter, 10);
                 query.$or = [
-                    { 'eval.label': filter },
-                    { 'eval2.label': filter }
+                    { 'eval1.label': labelNum },
+                    { 'eval2.label': labelNum }
                 ];
             } else if (filter === 'PENDING') {
                 query.$and = [
@@ -34,7 +36,6 @@ export async function GET(request: Request) {
                     { 'eval2.label': null }
                 ];
             } else if (filter === 'CONFLICT') {
-                // Ví dụ: eval1 và eval2 có nhãn khác nhau và đều đã được gán nhãn
                 query.$expr = {
                     $and: [
                         { $ne: ['$eval1.label', null] },
@@ -43,7 +44,6 @@ export async function GET(request: Request) {
                     ]
                 };
             } else if (filter === 'CONSENSUS') {
-                // Eval1 và eval2 giống nhau và không null
                 query.$expr = {
                     $and: [
                         { $ne: ['$eval1.label', null] },
@@ -53,30 +53,26 @@ export async function GET(request: Request) {
             }
         }
 
-        const items = await DatasetItem.find(query).sort({ createdAt: -1 }).lean();
-
-        // Đảm bảo serialize đúng format nhờ schema transform
+        const items = await SampleData.find(query).sort({ createdAt: -1 }).lean();
         return NextResponse.json({ success: true, data: items }, { status: 200 });
     } catch (error: any) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }
 
-// POST: Tạo mới một Dataset Item
 export async function POST(request: Request) {
     try {
         await dbConnect();
         const body = await request.json();
 
-        if (!body.text && !body.media) {
+        if (!body.modality_type || !body.gold_annotation) {
             return NextResponse.json(
-                { success: false, error: 'Dữ liệu phải có ít nhất nội dung text hoặc media' },
+                { success: false, error: 'Thiếu các trường bắt buộc: modality_type hoặc gold_annotation' },
                 { status: 400 }
             );
         }
 
-        const newItem = await DatasetItem.create(body);
-
+        const newItem = await SampleData.create(body);
         return NextResponse.json({ success: true, data: newItem }, { status: 201 });
     } catch (error: any) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
