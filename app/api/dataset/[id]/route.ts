@@ -11,7 +11,7 @@ interface RouteParams {
 export async function GET(request: Request, { params }: RouteParams) {
     try {
         await dbConnect();
-        const { id } = params;
+        const { id } = await params;
 
         const item = await SampleData.findById(id).lean();
         if (!item) {
@@ -27,7 +27,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 export async function PUT(request: Request, { params }: RouteParams) {
     try {
         await dbConnect();
-        const { id } = params;
+        const { id } = await params;
         const body = await request.json();
 
         const updatedItem = await SampleData.findByIdAndUpdate(id, body, {
@@ -48,7 +48,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
 export async function DELETE(request: Request, { params }: RouteParams) {
     try {
         await dbConnect();
-        const { id } = params;
+        const { id } = await params;
 
         const deletedItem = await SampleData.findByIdAndDelete(id).lean();
         if (!deletedItem) {

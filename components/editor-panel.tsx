@@ -329,9 +329,15 @@ export function EditorPanel({
                   <div className="relative rounded-lg overflow-hidden border border-border bg-black/90 max-h-48 flex items-center justify-center">
                     {media.type === "image" ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={media.url} alt="Preview" className="max-h-48 w-full object-contain" />
+                        <img
+                            key={media.url}
+                            src={media.url}
+                            alt="Preview"
+                            className="max-h-48 w-full object-contain"
+                            onError={(e) => console.error("Lỗi hiển thị ảnh preview:", e)}
+                        />
                     ) : (
-                        <video src={media.url} controls className="max-h-48 w-full object-contain" />
+                        <video key={media.url} src={media.url} controls className="max-h-48 w-full object-contain" />
                     )}
                   </div>
 
