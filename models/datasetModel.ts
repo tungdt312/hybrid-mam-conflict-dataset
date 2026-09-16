@@ -49,14 +49,49 @@ const VideoContextSchema = new mongoose.Schema({
 }, { _id: false });
 
 // 2. Sub-schemas cho Gold Annotation
+// Sub-schema cho phần locator tùy theo modality
+const LocatorSchema = new mongoose.Schema({
+    char_start: {
+        type: String,
+        default: null
+    },
+    char_end: {
+        type: String,
+        default: null
+    },
+    box_2d: {
+        type: [Number], // Mảng chứa các số nguyên/thực đại diện cho tọa độ [ymin, xmin, ymax, xmax] hoặc tương đương
+        default: null
+    },
+    start_second: {
+        type: Number,
+        default: null
+    },
+    end_second: {
+        type: Number,
+        default: null
+    }
+}, { _id: false });
+
+// Schema chính cho EvidenceSource
 const EvidenceSourceSchema = new mongoose.Schema({
-    type: {
+    modality: {
+        type: String,
+        required: true,
+        // Có thể thêm enum nếu cần kiểm soát chặt chẽ: ['TEXT', 'IMAGE', 'AUDIO', 'VIDEO', 'OCR', 'MIX']
+    },
+    locator_type: {
         type: String,
         required: true
     },
-    value: {
-        type: String,
+    locator: {
+        type: LocatorSchema,
         required: true
+    },
+    supports_label: {
+        type: Number,
+        required: true,
+        // Có thể thêm enum kiểm duyệt: ['SAFE', 'OFFENSIVE', 'HATE']
     }
 }, { _id: false });
 

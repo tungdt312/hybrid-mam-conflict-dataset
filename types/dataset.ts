@@ -41,8 +41,16 @@ export interface AgentExtractedContext {
 }
 
 export interface EvidenceSource {
-  type: string;
-  value: string;
+  modality: ModalityType | 'OCR';
+  locator_type: 'char_range' | 'bbox_2d' | 'timestamp';
+  locator: {
+    char_start: string | null;
+    char_end: string | null;
+    box_2d: number[] | null;
+    start_second: number | null;
+    end_second: number | null;
+  },
+  supports_label: LabelType;
 }
 
 export interface ReasoningLogItem {
