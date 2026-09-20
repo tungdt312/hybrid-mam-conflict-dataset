@@ -85,4 +85,14 @@ export interface MediaData {
   name: string;
   size?: number;
   description?: string;
+  isExistingBlob?: boolean;
+  uploadedAt?: string | Date;
+}
+
+export interface BlobStorageItem {
+  url: string;
+  downloadUrl: string;
+  pathname: string;
+  size: number;
+  uploadedAt: string | Date;
 }

@@ -56,6 +56,7 @@ interface EditorPanelProps {
     setEval2Note: (note: string) => void;
     // Handlers
     onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onSelectExistingMedia?: (media: MediaData) => void;
     onRemoveMedia: () => void;
     onCreateData: (e: React.FormEvent) => void;
     onSaveChanges: () => void;

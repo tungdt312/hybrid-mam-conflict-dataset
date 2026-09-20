@@ -174,6 +174,14 @@ export function DatasetAnnotator() {
             return;
         }
 
+        // Nếu tệp này được chọn từ Vercel Blob (ảnh cũ có sẵn), chỉ gỡ khỏi biểu mẫu, không xóa trên đám mây
+        if (media.isExistingBlob) {
+            setMedia(null);
+            setModalityType("TEXT");
+            toast.info("Đã gỡ tệp khỏi biểu mẫu (tệp vẫn được giữ an toàn trên Vercel Blob).");
+            return;
+        }
+
         const fileUrlToDelete = media.url;
         setMedia(null);
         setModalityType("TEXT");
@@ -196,6 +204,14 @@ export function DatasetAnnotator() {
             console.error(error);
             toast.dismiss(toastId);
             toast.error("Lỗi kết nối khi xóa tệp.");
+        }
+    };
+
+    // Chọn ảnh/video cũ có sẵn từ Vercel Blob
+    const handleSelectExistingMedia = (selectedMedia: MediaData) => {
+        setMedia(selectedMedia);
+        if (modalityType === "TEXT") {
+            setModalityType(selectedMedia.type === "image" ? "IMAGE" : "VIDEO");
         }
     };
 
@@ -322,8 +338,9 @@ export function DatasetAnnotator() {
             },
         };
 
-        // Lưu lại URL tệp hiện tại để phòng trường hợp cần rollback (xóa tệp)
-        const uploadedFileUrl = media?.url;
+        // Lưu lại URL tệp hiện tại để phòng trường hợp cần rollback (chỉ dọn dẹp nếu là tệp vừa tải mới, không xóa ảnh cũ từ Blob)
+        const shouldCleanupOnFail = media?.url && !media.isExistingBlob;
+        const uploadedFileUrl = shouldCleanupOnFail ? media.url : null;
 
         try {
             const res = await fetch('/api/dataset', {
@@ -677,6 +694,7 @@ export function DatasetAnnotator() {
                         eval2Note={eval2Note}
                         setEval2Note={setEval2Note}
                         onFileUpload={handleFileUpload}
+                        onSelectExistingMedia={handleSelectExistingMedia}
                         onRemoveMedia={handleRemoveMedia}
                         onCreateData={handleCreateData}
                         onSaveChanges={handleSaveChanges}

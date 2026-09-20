@@ -1,5 +1,25 @@
-import {del, put} from '@vercel/blob';
+import { del, list, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+
+export async function GET(request: Request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const limitParam = searchParams.get('limit');
+        const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10) || 100, 1), 1000) : 100;
+        const cursor = searchParams.get('cursor') || undefined;
+        const prefix = searchParams.get('prefix') || undefined;
+
+        const blobResult = await list({
+            limit,
+            cursor,
+            prefix,
+        });
+
+        return NextResponse.json({ success: true, data: blobResult }, { status: 200 });
+    } catch (error: any) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+}
 
 export async function POST(request: Request) {
     try {

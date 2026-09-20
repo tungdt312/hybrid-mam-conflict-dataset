@@ -3,7 +3,8 @@ import { MediaData, EvidenceSource } from "@/types/dataset";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Upload, X, Info, Eye, Type, Clock } from "lucide-react";
+import { Upload, X, Info, Eye, Type, Clock, Cloud, FolderOpen } from "lucide-react";
+import { BlobMediaModal } from "./blob-media-modal";
 
 interface MediaSectionProps {
     media: MediaData | null;
@@ -19,6 +20,7 @@ interface MediaSectionProps {
     setVideoCaption: (val: string) => void;
     isEditMode: boolean;
     onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onSelectExistingMedia?: (media: MediaData) => void;
     onRemoveMedia: () => void;
     evidenceSources: EvidenceSource[];
     boxEditingIndex: number | null;
@@ -114,9 +116,10 @@ function BBoundingBoxCanvas({ mediaElementId, evidenceIndex, evidenceSources, on
 export function MediaSection({
                                  media, mediaDescription, setMediaDescription, ocrText, setOcrText,
                                  imageCaption, setImageCaption, videoDuration, setVideoDuration, videoCaption, setVideoCaption,
-                                 isEditMode, onFileUpload, onRemoveMedia, evidenceSources, boxEditingIndex, setBoxEditingIndex, onUpdateLocator
+                                 isEditMode, onFileUpload, onSelectExistingMedia, onRemoveMedia, evidenceSources, boxEditingIndex, setBoxEditingIndex, onUpdateLocator
                              }: MediaSectionProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isBlobModalOpen, setIsBlobModalOpen] = useState(false);
 
     return (
         <div className="space-y-4 pt-2 border-t border-border/60">
@@ -132,17 +135,61 @@ export function MediaSection({
                     )}
                 </div>
                 {!isEditMode ? (
-                    <div>
+                    <div className="space-y-2">
                         <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={onFileUpload} className="hidden"/>
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-lg border border-dashed border-input bg-muted/20 hover:bg-muted/50 text-sm text-muted-foreground cursor-pointer">
-                            <Upload className="size-4 text-primary"/>
-                            <span>{media ? `Thay đổi tệp: ${media.name}` : "Nhấp hoặc kéo thả để tải lên hình ảnh/video"}</span>
-                        </button>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-input bg-muted/20 hover:bg-muted/50 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                            >
+                                <Upload className="size-4 text-primary shrink-0"/>
+                                <span>Tải tệp mới từ máy</span>
+                            </button>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsBlobModalOpen(true)}
+                                className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-input bg-card hover:bg-muted/50 text-xs font-medium h-auto cursor-pointer transition-colors"
+                            >
+                                <Cloud className="size-4 text-sky-500 shrink-0"/>
+                                <span>Chọn từ Vercel Blob</span>
+                            </Button>
+                        </div>
+
+                        {media && (
+                            <div className="flex items-center justify-between px-3 py-1.5 rounded-md bg-muted/40 border border-border/60 text-xs">
+                                <div className="flex items-center gap-2 truncate">
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-primary/10 text-primary">
+                                        {media.isExistingBlob ? "Từ Vercel Blob" : "Đã tải lên"}
+                                    </span>
+                                    <span className="truncate font-medium text-foreground">{media.name}</span>
+                                </div>
+                                {media.size ? (
+                                    <span className="text-muted-foreground text-[11px] shrink-0">
+                                        {(media.size / 1024).toFixed(0)} KB
+                                    </span>
+                                ) : null}
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="p-2.5 rounded-lg bg-muted/30 border border-border/50 text-xs text-muted-foreground">Tệp đã bị khóa ở chế độ chỉnh sửa.</div>
                 )}
             </div>
+
+            {/* Modal chọn tệp từ Vercel Blob */}
+            <BlobMediaModal
+                isOpen={isBlobModalOpen}
+                onClose={() => setIsBlobModalOpen(false)}
+                onSelect={(selected) => {
+                    onSelectExistingMedia?.(selected);
+                }}
+                currentMediaUrl={media?.url}
+            />
+
 
             <div className="space-y-2">
                 <Label className="text-sm font-semibold flex items-center gap-2"><Info className="size-4 text-muted-foreground"/> Mô tả Chung</Label>
