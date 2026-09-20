@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { LabelBadge } from "@/components/label-badge";
 import {
   Image as ImageIcon,
+  Film,
   Cpu,
   AlertTriangle,
   CheckCircle2,
@@ -87,6 +88,19 @@ export function DatasetCard({ item, isSelected, onSelect }: DatasetCardProps) {
                 />
                 <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/75 text-white text-xs font-semibold flex items-center gap-1">
               <ImageIcon className="size-3" /> Hình ảnh đầu vào
+            </span>
+              </div>
+          )}
+
+          {raw_inputs?.video_path && (
+              <div className="relative rounded-lg overflow-hidden border border-border bg-black/85 max-h-50 flex items-center justify-center">
+                <video
+                    src={raw_inputs.video_path}
+                    controls
+                    className="w-full max-h-50 object-cover"
+                />
+                <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/75 text-white text-xs font-semibold flex items-center gap-1">
+              <Film className="size-3" /> Video đầu vào
             </span>
               </div>
           )}

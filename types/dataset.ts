@@ -86,6 +86,7 @@ export interface MediaData {
   size?: number;
   description?: string;
   isExistingBlob?: boolean;
+  isExternal?: boolean;
   uploadedAt?: string | Date;
 }
 

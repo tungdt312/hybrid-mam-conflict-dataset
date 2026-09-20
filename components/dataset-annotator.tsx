@@ -167,6 +167,7 @@ export function DatasetAnnotator() {
     };
 
     // Remove uploaded media
+    // Remove uploaded media
     const handleRemoveMedia = async () => {
         if (!media || !media.url) {
             setMedia(null);
@@ -174,11 +175,11 @@ export function DatasetAnnotator() {
             return;
         }
 
-        // Nếu tệp này được chọn từ Vercel Blob (ảnh cũ có sẵn), chỉ gỡ khỏi biểu mẫu, không xóa trên đám mây
-        if (media.isExistingBlob) {
+        // Nếu tệp này được chọn từ Vercel Blob (ảnh cũ có sẵn) hoặc là liên kết ngoài (URL), chỉ gỡ khỏi biểu mẫu, không xóa trên đám mây
+        if (media.isExistingBlob || media.isExternal || !media.url.includes("blob.vercel-storage.com")) {
             setMedia(null);
             setModalityType("TEXT");
-            toast.info("Đã gỡ tệp khỏi biểu mẫu (tệp vẫn được giữ an toàn trên Vercel Blob).");
+            toast.info("Đã gỡ tệp khỏi biểu mẫu.");
             return;
         }
 
@@ -207,7 +208,7 @@ export function DatasetAnnotator() {
         }
     };
 
-    // Chọn ảnh/video cũ có sẵn từ Vercel Blob
+    // Chọn ảnh/video cũ có sẵn từ Vercel Blob hoặc từ liên kết ngoài
     const handleSelectExistingMedia = (selectedMedia: MediaData) => {
         setMedia(selectedMedia);
         if (modalityType === "TEXT") {
@@ -243,18 +244,24 @@ export function DatasetAnnotator() {
         setText(item.raw_inputs.text || "");
 
         if (item.raw_inputs.image_path) {
+            const isBlob = item.raw_inputs.image_path.includes("blob.vercel-storage.com");
             setMedia({
                 type: "image",
                 url: item.raw_inputs.image_path,
                 name: item.raw_inputs.image_path.split("/").pop() || "image",
                 description: item.agent_extracted_context?.vision_context?.image_caption || "",
+                isExistingBlob: isBlob,
+                isExternal: !isBlob,
             });
         } else if (item.raw_inputs.video_path) {
+            const isBlob = item.raw_inputs.video_path.includes("blob.vercel-storage.com");
             setMedia({
                 type: "video",
                 url: item.raw_inputs.video_path,
                 name: item.raw_inputs.video_path.split("/").pop() || "video",
                 description: item.agent_extracted_context?.video_context?.video_caption || "",
+                isExistingBlob: isBlob,
+                isExternal: !isBlob,
             });
         } else {
             setMedia(null);
@@ -338,8 +345,8 @@ export function DatasetAnnotator() {
             },
         };
 
-        // Lưu lại URL tệp hiện tại để phòng trường hợp cần rollback (chỉ dọn dẹp nếu là tệp vừa tải mới, không xóa ảnh cũ từ Blob)
-        const shouldCleanupOnFail = media?.url && !media.isExistingBlob;
+        // Lưu lại URL tệp hiện tại để phòng trường hợp cần rollback (chỉ dọn dẹp nếu là tệp vừa tải mới lên Blob, không xóa ảnh cũ hoặc link ngoài)
+        const shouldCleanupOnFail = media?.url && !media.isExistingBlob && !media.isExternal && media.url.includes("blob.vercel-storage.com");
         const uploadedFileUrl = shouldCleanupOnFail ? media.url : null;
 
         try {
@@ -453,7 +460,7 @@ export function DatasetAnnotator() {
         const toastId = toast.loading("Đang xóa bản ghi và tệp liên quan...");
 
         try {
-            if (mediaUrlToDelete) {
+            if (mediaUrlToDelete && mediaUrlToDelete.includes("blob.vercel-storage.com")) {
                 try {
                     await fetch(`/api/upload?url=${encodeURIComponent(mediaUrlToDelete)}`, {
                         method: 'DELETE',
