@@ -121,6 +121,28 @@ export function GoldAnnotation({
                             {item.locator_type === "bbox_2d" && (
                                 <Input placeholder="box_2d (ymin, xmin, ymax, xmax)" value={item.locator.box_2d ? item.locator.box_2d.join(", ") : ""} onChange={(e) => onUpdateLocator(index, "box_2d", e.target.value ? e.target.value.split(",").map(n => parseFloat(n.trim())).filter(n => !isNaN(n)) : null)} className="h-7 text-xs bg-background"/>
                             )}
+                            {item.locator_type === "timestamp" && (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Input
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        placeholder="start_second (giây)"
+                                        value={item.locator?.start_second !== null && item.locator?.start_second !== undefined ? item.locator.start_second : ""}
+                                        onChange={(e) => onUpdateLocator(index, "start_second", e.target.value === "" ? null : (isNaN(parseFloat(e.target.value)) ? null : parseFloat(e.target.value)))}
+                                        className="h-7 text-xs bg-background"
+                                    />
+                                    <Input
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        placeholder="end_second (giây)"
+                                        value={item.locator?.end_second !== null && item.locator?.end_second !== undefined ? item.locator.end_second : ""}
+                                        onChange={(e) => onUpdateLocator(index, "end_second", e.target.value === "" ? null : (isNaN(parseFloat(e.target.value)) ? null : parseFloat(e.target.value)))}
+                                        className="h-7 text-xs bg-background"
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}

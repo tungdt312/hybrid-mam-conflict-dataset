@@ -109,8 +109,8 @@ export function DatasetAnnotator() {
             updated[index] = {
                 ...updated[index],
                 locator: {
-                    ...updated[index].locator,
-                    [locatorField]: val, // Cập nhật trường con trong locator, ví dụ 'box_2d'
+                    ...(updated[index].locator || {}),
+                    [locatorField]: val, // Cập nhật trường con trong locator, ví dụ 'box_2d', 'start_second'
                 },
             };
             return updated;
